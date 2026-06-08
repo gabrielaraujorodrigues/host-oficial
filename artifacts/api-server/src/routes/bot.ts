@@ -1,6 +1,7 @@
 import { Router } from "express";
 import fs from "fs";
 import path from "path";
+import { spawn, execSync, ChildProcess } from "child_process";
 
 const router = Router();
 
@@ -8,6 +9,8 @@ const BOT_DIR = path.resolve("../../bot");
 const SETTINGS_FILE = path.join(BOT_DIR, "settings", "settings.json");
 const SESSION_DIR = path.join(BOT_DIR, "bot-do-biel-session");
 const LOG_DIR = "/tmp/logs";
+
+let botProcess: ChildProcess | null = null;
 
 function readSettings() {
   try {
@@ -25,6 +28,51 @@ function getBotStatus() {
     return connected ? "conectado" : "desconectado";
   } catch {
     return "desconhecido";
+  }
+}
+
+function isBotRunning(): boolean {
+  if (botProcess && !botProcess.killed) {
+    try {
+      process.kill(botProcess.pid!, 0);
+      return true;
+    } catch {
+      botProcess = null;
+    }
+  }
+  try {
+    const out = execSync("pgrep -f 'node index.js'", { encoding: "utf8" }).trim();
+    return out.length > 0;
+  } catch {
+    return false;
+  }
+}
+
+function startBot(): { ok: boolean; message: string } {
+  if (isBotRunning()) {
+    return { ok: false, message: "Bot já está em execução." };
+  }
+  try {
+    const child = spawn("node", ["index.js"], {
+      cwd: BOT_DIR,
+      detached: true,
+      stdio: "ignore",
+    });
+    child.unref();
+    botProcess = child;
+    return { ok: true, message: "Bot iniciado com sucesso!" };
+  } catch (e) {
+    return { ok: false, message: "Erro ao iniciar bot: " + String(e) };
+  }
+}
+
+function stopBot(): { ok: boolean; message: string } {
+  try {
+    execSync("pkill -f 'node index.js' || true");
+    botProcess = null;
+    return { ok: true, message: "Bot parado com sucesso!" };
+  } catch (e) {
+    return { ok: false, message: "Erro ao parar bot: " + String(e) };
   }
 }
 
@@ -51,8 +99,10 @@ function getRecentLogs(lines = 80): string[] {
 router.get("/status", (_req, res) => {
   const settings = readSettings();
   const status = getBotStatus();
+  const running = isBotRunning();
   res.json({
     status,
+    running,
     botName: settings?.botName ?? "Bot do Biel",
     ownerNumber: settings?.ownerNumber ?? "",
     prefix: settings?.prefix ?? [],
@@ -81,6 +131,24 @@ router.put("/settings", (req, res) => {
   } catch (e: unknown) {
     res.status(500).json({ error: String(e) });
   }
+});
+
+router.post("/start", (_req, res) => {
+  const result = startBot();
+  res.json(result);
+});
+
+router.post("/stop", (_req, res) => {
+  const result = stopBot();
+  res.json(result);
+});
+
+router.post("/restart", (_req, res) => {
+  stopBot();
+  setTimeout(() => {
+    const result = startBot();
+    res.json({ ok: result.ok, message: "Bot reiniciado! " + result.message });
+  }, 1500);
 });
 
 export default router;
