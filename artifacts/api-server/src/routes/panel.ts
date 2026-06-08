@@ -46,9 +46,61 @@ main{max-width:1200px;margin:0 auto;padding:20px}
 .stat-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px}
 .stat-value{font-size:20px;font-weight:700;color:var(--accent)}
 .stat-value.green{color:var(--green)}.stat-value.red{color:var(--red)}.stat-value.yellow{color:var(--yellow)}
-.log-box{background:#0d1117;border:1px solid var(--border);border-radius:8px;height:320px;overflow-y:auto;padding:12px;font-family:'Courier New',monospace;font-size:12px;line-height:1.6}
-.log-line{padding:2px 0;border-bottom:1px solid #1c2128}.log-line:last-child{border-bottom:none}
-.log-line.err{color:#f85149}.log-line.warn{color:var(--yellow)}.log-line.ok{color:var(--green)}
+
+/* ── TERMINAL ── */
+.terminal-wrap{background:#0a0c10;border:1px solid var(--border);border-radius:8px;overflow:hidden;display:flex;flex-direction:column}
+.terminal-bar{background:#161b22;border-bottom:1px solid var(--border);padding:7px 14px;display:flex;align-items:center;gap:8px;flex-shrink:0}
+.terminal-dot{width:10px;height:10px;border-radius:50%}
+.t-red{background:#ff5f57}.t-yellow{background:#febc2e}.t-green{background:#28c840}
+.terminal-title{font-size:11px;color:var(--muted);margin-left:auto;margin-right:auto;font-family:monospace}
+.terminal-sse{font-size:11px;padding:2px 8px;border-radius:4px;border:1px solid var(--border);color:var(--muted)}
+.terminal-sse.live{color:var(--green);border-color:var(--green);background:#0d2010}
+.log-box{
+  flex:1;height:380px;overflow-y:auto;padding:12px 16px;
+  font-family:'Courier New',Consolas,monospace;font-size:12px;line-height:1.7;
+  color:#c9d1d9;
+}
+.log-box::-webkit-scrollbar{width:6px}
+.log-box::-webkit-scrollbar-track{background:#0a0c10}
+.log-box::-webkit-scrollbar-thumb{background:#30363d;border-radius:3px}
+.log-line{white-space:pre-wrap;word-break:break-all}
+.log-line.err{color:#f85149}
+.log-line.warn{color:var(--yellow)}
+.log-line.ok{color:var(--green)}
+.log-line.sys{color:#8b949e;font-style:italic}
+.log-line.you{color:var(--accent);font-weight:600}
+
+/* ── INPUT TERMINAL ── */
+.terminal-input-row{
+  display:flex;align-items:center;gap:0;
+  border-top:1px solid var(--border);
+  background:#0d1117;
+  padding:0;
+  flex-shrink:0;
+}
+.terminal-prompt{
+  padding:10px 12px;color:var(--green);font-family:'Courier New',monospace;
+  font-size:13px;font-weight:700;user-select:none;flex-shrink:0;
+}
+.terminal-input{
+  flex:1;background:transparent;border:none;outline:none;
+  color:#e6edf3;font-family:'Courier New',monospace;font-size:13px;
+  padding:10px 0;caret-color:var(--accent);
+}
+.terminal-send{
+  background:var(--accent);border:none;color:#fff;
+  padding:10px 18px;cursor:pointer;font-size:13px;font-weight:600;
+  transition:opacity .2s;flex-shrink:0;
+}
+.terminal-send:hover{opacity:.85}
+.terminal-send:active{opacity:.7}
+.terminal-clear{
+  background:none;border:none;color:var(--muted);
+  padding:10px 12px;cursor:pointer;font-size:13px;
+  transition:color .2s;
+}
+.terminal-clear:hover{color:var(--red)}
+
 .form-group{margin-bottom:15px}
 .form-group label{display:block;font-size:13px;color:var(--muted);margin-bottom:5px;font-weight:500}
 .form-group input,.form-group select{width:100%;background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:9px 13px;color:var(--text);font-size:14px;outline:none;transition:border-color .2s}
@@ -58,14 +110,13 @@ main{max-width:1200px;margin:0 auto;padding:20px}
 .btn.secondary{background:#21262d;border:1px solid var(--border);color:var(--text)}
 .btn.danger{background:var(--red)}.btn.success{background:var(--green)}.btn.warning{background:var(--yellow);color:#0d1117}
 .btn-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-.refresh-btn{margin-left:auto;background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:4px 12px;cursor:pointer;font-size:12px;transition:all .2s}
-.refresh-btn:hover{color:var(--text);border-color:var(--accent)}
 hr{border:none;border-top:1px solid var(--border);margin:14px 0}
 .prefix-tag{background:#21262d;border:1px solid var(--border);border-radius:6px;padding:4px 12px;font-family:monospace;font-size:14px;font-weight:700;color:var(--accent);display:inline-block;margin:3px}
 .process-dot{width:9px;height:9px;border-radius:50%;background:var(--red);display:inline-block;margin-right:5px}
 .process-dot.on{background:var(--green);box-shadow:0 0 7px var(--green)}
 .toast{position:fixed;bottom:22px;right:22px;background:var(--green);color:#fff;padding:11px 18px;border-radius:10px;font-weight:600;font-size:13px;opacity:0;transition:opacity .3s;z-index:999;max-width:340px}
 .toast.show{opacity:1}.toast.error{background:var(--red)}.toast.warn{background:var(--yellow);color:#0d1117}
+.tip-box{background:#0d1f0d;border:1px solid #2ea04360;border-radius:8px;padding:11px 15px;font-size:12px;color:#7ee787;margin-bottom:14px;line-height:1.6}
 
 /* ── FILE MANAGER ── */
 .fm-layout{display:grid;grid-template-columns:260px 1fr;gap:0;height:70vh;border:1px solid var(--border);border-radius:12px;overflow:hidden}
@@ -102,11 +153,11 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
 </header>
 
 <nav>
-  <div class="nav-tab active" onclick="switchTab('overview')">📊 Visão Geral</div>
-  <div class="nav-tab" onclick="switchTab('control')">🎮 Controle</div>
-  <div class="nav-tab" onclick="switchTab('logs')">📋 Logs</div>
-  <div class="nav-tab" onclick="switchTab('settings')">⚙️ Configurações</div>
-  <div class="nav-tab" onclick="switchTab('files')">📁 Arquivos</div>
+  <div class="nav-tab active" onclick="switchTab('overview',this)">📊 Visão Geral</div>
+  <div class="nav-tab" onclick="switchTab('control',this)">🎮 Controle</div>
+  <div class="nav-tab" onclick="switchTab('logs',this)">📋 Terminal</div>
+  <div class="nav-tab" onclick="switchTab('settings',this)">⚙️ Configurações</div>
+  <div class="nav-tab" onclick="switchTab('files',this)">📁 Arquivos</div>
 </nav>
 
 <main>
@@ -132,7 +183,7 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
   <div class="card">
     <div class="card-header">🎮 Controle do Bot</div>
     <div class="card-body">
-      <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Gerencie o processo. Após iniciar, conecte o WhatsApp no console do workflow "Bot do Biel".</p>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Gerencie o processo. Após iniciar, conecte o WhatsApp na aba <strong style="color:var(--accent)">Terminal</strong> — você verá o QR code e poderá digitar as opções do bot diretamente lá.</p>
       <div class="btn-row">
         <button class="btn success" id="btnStart" onclick="controlBot('start')">▶ Iniciar Bot</button>
         <button class="btn danger"  id="btnStop"    onclick="controlBot('stop')">⏹ Parar Bot</button>
@@ -146,11 +197,34 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
   </div>
 </div>
 
-<!-- ===== LOGS ===== -->
+<!-- ===== TERMINAL / LOGS ===== -->
 <div id="tab-logs" class="tab-content">
-  <div class="card">
-    <div class="card-header">📋 Logs do Bot <button class="refresh-btn" onclick="loadLogs()">↻ Atualizar</button></div>
-    <div class="card-body" style="padding-top:12px"><div class="log-box" id="logBox">Carregando...</div></div>
+  <div class="tip-box">
+    💡 <strong>Como conectar o bot:</strong> Clique em <strong>▶ Iniciar Bot</strong> na aba Controle, depois volte aqui. O bot vai exibir as opções (ex: <code>1 - QR Code</code> / <code>2 - Código de emparelhamento</code>). Digite o número da opção no campo abaixo e pressione <strong>Enviar</strong> ou <strong>Enter</strong>.
+  </div>
+  <div class="card" style="margin-bottom:0">
+    <div class="card-header">
+      📟 Terminal do Bot
+      <span class="terminal-sse" id="sseBadge">⬤ desconectado</span>
+      <button class="btn secondary" style="margin-left:auto;padding:5px 12px;font-size:12px" onclick="clearTerminal()">🗑 Limpar</button>
+    </div>
+    <div class="terminal-wrap">
+      <div class="terminal-bar">
+        <span class="terminal-dot t-red"></span>
+        <span class="terminal-dot t-yellow"></span>
+        <span class="terminal-dot t-green"></span>
+        <span class="terminal-title">bot/index.js — stdout/stderr ao vivo</span>
+      </div>
+      <div class="log-box" id="logBox"></div>
+      <div class="terminal-input-row">
+        <span class="terminal-prompt">❯</span>
+        <input class="terminal-input" id="termInput" type="text"
+               placeholder="Digite aqui para enviar ao bot (ex: 1, 2, seu número...)"
+               autocomplete="off" autocorrect="off" spellcheck="false"/>
+        <button class="terminal-clear" onclick="document.getElementById('termInput').value=''" title="Limpar campo">✕</button>
+        <button class="terminal-send" onclick="sendInput()">Enviar ↵</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -229,18 +303,24 @@ const BASE = window.location.origin + '/api';
 let controlling = false;
 let currentFilePath = null;
 let currentTab = 'overview';
+let sseSource = null;
+let autoScroll = true;
 
-function switchTab(tab) {
-  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-  document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+// ── Tab switching ──
+function switchTab(tab, el) {
+  document.querySelectorAll('.tab-content').forEach(e => e.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(e => e.classList.remove('active'));
   document.getElementById('tab-' + tab).classList.add('active');
-  event.currentTarget.classList.add('active');
+  if (el) el.classList.add('active');
   currentTab = tab;
   if (tab === 'files' && document.getElementById('fmTree').children.length === 1
       && document.getElementById('fmTree').firstElementChild.classList.contains('fm-tree-loading')) {
     loadTree();
   }
-  if (tab === 'logs') loadLogs();
+  if (tab === 'logs') {
+    startSSE();
+    setTimeout(() => document.getElementById('termInput')?.focus(), 100);
+  }
   if (tab === 'settings') loadSettings();
 }
 
@@ -256,6 +336,7 @@ function fmtUptime(s) {
   return h > 0 ? h+'h '+m+'m' : m+'m '+Math.floor(s%60)+'s';
 }
 
+// ── Status polling ──
 async function loadStatus() {
   try {
     const d = await fetch(BASE+'/bot/status').then(r => r.json());
@@ -278,19 +359,89 @@ async function loadStatus() {
   } catch { document.getElementById('statusBadge').className='badge offline'; }
 }
 
-async function loadLogs() {
+// ── SSE Terminal ──
+function addLogLine(text) {
   const box = document.getElementById('logBox');
-  box.textContent = 'Carregando...';
-  try {
-    const d = await fetch(BASE+'/bot/logs').then(r => r.json());
-    if (!d.logs?.length) { box.textContent='Nenhum log encontrado.'; return; }
-    box.innerHTML = d.logs.map(l => {
-      const cls = /error|err|ERRO/i.test(l)?'err':/warn|aviso/i.test(l)?'warn':/ok|sucesso|✓/i.test(l)?'ok':'';
-      return '<div class="log-line '+cls+'">'+l.replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</div>';
-    }).join('');
-  } catch(e) { box.textContent='Erro: '+e.message; }
+  const div = document.createElement('div');
+  div.className = 'log-line';
+  if (/\\[VOCÊ\\]/i.test(text)) div.classList.add('you');
+  else if (/\\[SISTEMA\\]/i.test(text)) div.classList.add('sys');
+  else if (/error|err|erro|\\[stderr\\]/i.test(text)) div.classList.add('err');
+  else if (/warn|aviso/i.test(text)) div.classList.add('warn');
+  else if (/ok|sucesso|✓|conectado/i.test(text)) div.classList.add('ok');
+  div.textContent = text;
+  box.appendChild(div);
+  if (autoScroll) box.scrollTop = box.scrollHeight;
 }
 
+function clearTerminal() {
+  document.getElementById('logBox').innerHTML = '';
+  showToast('Terminal limpo.','warn');
+}
+
+function startSSE() {
+  if (sseSource && sseSource.readyState !== EventSource.CLOSED) return;
+  const badge = document.getElementById('sseBadge');
+  badge.textContent = '⬤ conectando...';
+  badge.className = 'terminal-sse';
+
+  sseSource = new EventSource(BASE + '/bot/stream');
+
+  sseSource.onopen = () => {
+    badge.textContent = '⬤ ao vivo';
+    badge.className = 'terminal-sse live';
+  };
+
+  sseSource.onmessage = (e) => {
+    try {
+      const { line } = JSON.parse(e.data);
+      if (line) addLogLine(line);
+    } catch {}
+  };
+
+  sseSource.onerror = () => {
+    badge.textContent = '⬤ desconectado';
+    badge.className = 'terminal-sse';
+    // Tenta reconectar em 5s
+    setTimeout(() => {
+      if (currentTab === 'logs') startSSE();
+    }, 5000);
+  };
+
+  // Auto-scroll detect
+  const box = document.getElementById('logBox');
+  box.addEventListener('scroll', () => {
+    autoScroll = box.scrollHeight - box.scrollTop - box.clientHeight < 60;
+  });
+}
+
+// ── Enviar input ao bot ──
+async function sendInput() {
+  const input = document.getElementById('termInput');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  try {
+    const r = await fetch(BASE+'/bot/input', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ text })
+    });
+    const d = await r.json();
+    if (!d.ok) showToast('⚠️ ' + d.message, 'warn');
+  } catch(e) {
+    showToast('Erro ao enviar: ' + e.message, 'error');
+  }
+}
+
+// Enter para enviar
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('termInput')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') sendInput();
+  });
+});
+
+// ── Configurações ──
 async function loadSettings() {
   try {
     const d = await fetch(BASE+'/bot/settings').then(r => r.json());
@@ -313,6 +464,7 @@ async function saveSettings() {
   } catch(e) { showToast('Erro: '+e.message,'error'); }
 }
 
+// ── Controle do Bot ──
 async function controlBot(action) {
   if (controlling) return;
   controlling = true;
@@ -324,6 +476,9 @@ async function controlBot(action) {
   try {
     const d = await fetch(BASE+'/bot/'+action,{method:'POST'}).then(r=>r.json());
     d.ok ? showToast('✅ '+d.message) : showToast('⚠️ '+d.message,'warn');
+    if (d.ok && action === 'start') {
+      showToast('✅ Bot iniciado! Vá para a aba Terminal para conectar o WhatsApp.', 'ok');
+    }
     setTimeout(loadStatus, 2000);
   } catch(e) { showToast('Erro: '+e.message,'error'); }
   finally { btn.disabled=false; btn.innerHTML=orig; controlling=false; }
@@ -444,7 +599,6 @@ async function fmCreate() {
 // Init
 loadStatus();
 setInterval(loadStatus, 10000);
-setInterval(() => { if (currentTab==='logs') loadLogs(); }, 30000);
 </script>
 </body>
 </html>`;
