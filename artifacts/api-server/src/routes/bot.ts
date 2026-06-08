@@ -11,13 +11,33 @@ const SESSION_DIR = path.join(BOT_DIR, "bot-do-biel-session");
 
 let botProcess: ChildProcess | null = null;
 
-// Ring buffer para guardar as últimas 500 linhas do terminal
+// Ring buffer das últimas 500 linhas do terminal
 const MAX_LINES = 500;
 const terminalLines: string[] = [];
+
 // SSE clients ativos
 const sseClients: Set<Response> = new Set();
 
-function pushLine(line: string) {
+// QR code mais recente detectado no stdout do bot
+let latestQr: string | null = null;
+let latestQrAt = 0;
+
+// Regex para detectar string de QR do Baileys: "N@base64data,..."
+const QR_REGEX = /^\d+@[A-Za-z0-9+/=,]{30,}$/;
+
+// Remove códigos ANSI de cor do terminal
+function stripAnsi(str: string): string {
+  // eslint-disable-next-line no-control-regex
+  return str.replace(/\x1B\[[0-9;]*[mGKHF]/g, "").replace(/\x1B\][^\x07]*\x07/g, "");
+}
+
+function pushLine(rawLine: string) {
+  const line = stripAnsi(rawLine);
+  // Detecta QR code bruto do Baileys
+  if (QR_REGEX.test(line.trim())) {
+    latestQr = line.trim();
+    latestQrAt = Date.now();
+  }
   terminalLines.push(line);
   if (terminalLines.length > MAX_LINES) terminalLines.shift();
   const data = JSON.stringify({ line });
@@ -94,6 +114,7 @@ function startBot(): { ok: boolean; message: string } {
   }
   try {
     pushLine("[SISTEMA] Iniciando bot...");
+    latestQr = null;
     const child = spawn("node", ["index.js"], {
       cwd: BOT_DIR,
       stdio: ["pipe", "pipe", "pipe"],
@@ -114,6 +135,7 @@ function stopBot(): { ok: boolean; message: string } {
     }
     execSync("pkill -f 'node index.js' || true");
     pushLine("[SISTEMA] Bot parado.");
+    latestQr = null;
     return { ok: true, message: "Bot parado com sucesso!" };
   } catch (e) {
     return { ok: false, message: "Erro ao parar bot: " + String(e) };
@@ -133,8 +155,16 @@ router.get("/status", (_req, res) => {
     ownerNumber: settings?.ownerNumber ?? "",
     prefix: settings?.prefix ?? [],
     uptime: process.uptime(),
+    hasQr: !!latestQr && (Date.now() - latestQrAt) < 60_000,
     ts: Date.now(),
   });
+});
+
+// GET: retorna o QR code bruto mais recente (expira em 60s)
+router.get("/qr", (_req, res) => {
+  const valid = latestQr && (Date.now() - latestQrAt) < 60_000;
+  if (!valid) return res.status(204).end();
+  res.json({ qr: latestQr, at: latestQrAt });
 });
 
 // SSE: stream de logs em tempo real
