@@ -118,6 +118,21 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
 .toast.show{opacity:1}.toast.error{background:var(--red)}.toast.warn{background:var(--yellow);color:#0d1117}
 .tip-box{background:#0d1f0d;border:1px solid #2ea04360;border-radius:8px;padding:11px 15px;font-size:12px;color:#7ee787;margin-bottom:14px;line-height:1.6}
 
+/* ── QR CODE ── */
+.qr-wrap{display:flex;flex-direction:column;align-items:center;gap:20px;padding:30px 20px}
+.qr-canvas-box{background:#fff;border-radius:16px;padding:18px;display:inline-block;box-shadow:0 0 40px #58a6ff30}
+.qr-canvas-box canvas{display:block}
+.qr-status{font-size:13px;color:var(--muted);text-align:center;line-height:1.7}
+.qr-timer{font-size:11px;color:var(--yellow);margin-top:4px;text-align:center}
+.qr-placeholder{display:flex;flex-direction:column;align-items:center;gap:12px;padding:40px 20px;color:var(--muted)}
+.qr-placeholder .qr-icon{font-size:64px;opacity:.3}
+.qr-pulse{animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:.3}50%{opacity:.7}}
+.qr-badge{display:inline-block;padding:4px 14px;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:.5px}
+.qr-badge.waiting{background:#21262d;color:var(--muted);border:1px solid var(--border)}
+.qr-badge.active{background:#0d2010;color:var(--green);border:1px solid var(--green)}
+.qr-badge.expired{background:#2d1b1b;color:var(--red);border:1px solid var(--red)}
+
 /* ── FILE MANAGER ── */
 .fm-layout{display:grid;grid-template-columns:260px 1fr;gap:0;height:70vh;border:1px solid var(--border);border-radius:12px;overflow:hidden}
 .fm-tree{background:#0d1117;overflow-y:auto;border-right:1px solid var(--border);padding:8px 0}
@@ -156,6 +171,7 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
   <div class="nav-tab active" onclick="switchTab('overview',this)">📊 Visão Geral</div>
   <div class="nav-tab" onclick="switchTab('control',this)">🎮 Controle</div>
   <div class="nav-tab" onclick="switchTab('logs',this)">📋 Terminal</div>
+  <div class="nav-tab" id="qrTab" onclick="switchTab('qr',this)">📷 QR Code</div>
   <div class="nav-tab" onclick="switchTab('settings',this)">⚙️ Configurações</div>
   <div class="nav-tab" onclick="switchTab('files',this)">📁 Arquivos</div>
 </nav>
@@ -224,6 +240,36 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
         <button class="terminal-clear" onclick="document.getElementById('termInput').value=''" title="Limpar campo">✕</button>
         <button class="terminal-send" onclick="sendInput()">Enviar ↵</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== QR CODE ===== -->
+<div id="tab-qr" class="tab-content">
+  <div class="card">
+    <div class="card-header">
+      📷 QR Code — Conectar WhatsApp
+      <span class="qr-badge waiting" id="qrBadge">aguardando bot</span>
+      <button class="btn secondary" style="margin-left:auto;padding:5px 12px;font-size:12px" onclick="pollQr()">↻ Atualizar</button>
+    </div>
+    <div id="qrBody">
+      <div class="qr-placeholder">
+        <div class="qr-icon qr-pulse">📷</div>
+        <div style="font-size:14px;font-weight:600">Nenhum QR Code disponível</div>
+        <div style="font-size:12px;text-align:center;max-width:380px">
+          Inicie o bot na aba <strong>Controle</strong>, vá na aba <strong>Terminal</strong> e escolha a opção <strong>1 (QR Code)</strong>. O QR aparecerá aqui automaticamente.
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">📱 Como escanear</div>
+    <div class="card-body" style="font-size:13px;color:var(--muted);line-height:1.9">
+      1. Abra o WhatsApp no celular<br>
+      2. Toque em <strong style="color:var(--text)">⋮ Menu → Dispositivos conectados</strong><br>
+      3. Toque em <strong style="color:var(--text)">Conectar um dispositivo</strong><br>
+      4. Aponte a câmera para o QR Code acima<br>
+      <span style="color:var(--yellow);font-size:12px">⚠ O QR expira em 60 segundos. Se expirar, clique em Atualizar ou reinicie o bot.</span>
     </div>
   </div>
 </div>
@@ -298,6 +344,7 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
 
 <div class="toast" id="toast"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <script>
 const BASE = window.location.origin + '/api';
 let controlling = false;
@@ -321,6 +368,7 @@ function switchTab(tab, el) {
     startSSE();
     setTimeout(() => document.getElementById('termInput')?.focus(), 100);
   }
+  if (tab === 'qr') startQrPolling();
   if (tab === 'settings') loadSettings();
 }
 
@@ -440,6 +488,88 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Enter') sendInput();
   });
 });
+
+// ── QR Code ──
+let qrPollInterval = null;
+let qrCountdown = null;
+let lastRenderedQr = null;
+
+function startQrPolling() {
+  pollQr();
+  if (!qrPollInterval) qrPollInterval = setInterval(pollQr, 4000);
+}
+
+function stopQrPolling() {
+  if (qrPollInterval) { clearInterval(qrPollInterval); qrPollInterval = null; }
+  if (qrCountdown) { clearInterval(qrCountdown); qrCountdown = null; }
+}
+
+async function pollQr() {
+  try {
+    const r = await fetch(BASE + '/bot/qr');
+    if (r.status === 204) {
+      if (lastRenderedQr) return; // ainda mostrando o anterior enquanto sem novo
+      showQrPlaceholder();
+      return;
+    }
+    const d = await r.json();
+    if (d.qr && d.qr !== lastRenderedQr) {
+      lastRenderedQr = d.qr;
+      renderQr(d.qr, d.at);
+    }
+  } catch {}
+}
+
+function showQrPlaceholder() {
+  lastRenderedQr = null;
+  document.getElementById('qrBadge').className = 'qr-badge waiting';
+  document.getElementById('qrBadge').textContent = 'aguardando bot';
+  document.getElementById('qrBody').innerHTML = \`
+    <div class="qr-placeholder">
+      <div class="qr-icon qr-pulse">📷</div>
+      <div style="font-size:14px;font-weight:600">Nenhum QR Code disponível</div>
+      <div style="font-size:12px;text-align:center;max-width:380px">
+        Inicie o bot, vá na aba <strong>Terminal</strong> e escolha a opção <strong>1 (QR Code)</strong>.
+      </div>
+    </div>\`;
+}
+
+function renderQr(qrData, at) {
+  const badge = document.getElementById('qrBadge');
+  badge.className = 'qr-badge active';
+  badge.textContent = '● QR ativo';
+
+  document.getElementById('qrBody').innerHTML = \`
+    <div class="qr-wrap">
+      <div class="qr-canvas-box"><canvas id="qrCanvas"></canvas></div>
+      <div class="qr-status">Escaneie com o WhatsApp para conectar o bot</div>
+      <div class="qr-timer" id="qrTimer">Expira em 60s</div>
+    </div>\`;
+
+  if (window.QRCode) {
+    QRCode.toCanvas(document.getElementById('qrCanvas'), qrData, { width: 240, margin: 1 }, (err) => {
+      if (err) document.getElementById('qrCanvas').parentElement.innerHTML = '<div style="color:red;font-size:12px">Erro ao gerar QR</div>';
+    });
+  } else {
+    document.getElementById('qrCanvas').parentElement.innerHTML =
+      '<div style="color:var(--muted);font-size:12px;padding:20px">qrcode.js não carregou. Verifique a conexão.</div>';
+  }
+
+  // Countdown timer
+  if (qrCountdown) clearInterval(qrCountdown);
+  const expiresAt = (at || Date.now()) + 60000;
+  qrCountdown = setInterval(() => {
+    const left = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
+    const el = document.getElementById('qrTimer');
+    if (el) el.textContent = left > 0 ? \`Expira em \${left}s\` : 'QR expirado — gerando novo...';
+    if (left === 0) {
+      if (el) el.parentElement.closest('.qr-wrap').style.opacity = '0.4';
+      lastRenderedQr = null;
+      badge.className = 'qr-badge expired';
+      badge.textContent = 'expirado';
+    }
+  }, 1000);
+}
 
 // ── Configurações ──
 async function loadSettings() {
