@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import fs from "fs";
 import path from "path";
 import { spawn, execSync, ChildProcess } from "child_process";
@@ -8,9 +8,49 @@ const router = Router();
 const BOT_DIR = path.resolve("../../bot");
 const SETTINGS_FILE = path.join(BOT_DIR, "settings", "settings.json");
 const SESSION_DIR = path.join(BOT_DIR, "bot-do-biel-session");
-const LOG_DIR = "/tmp/logs";
 
 let botProcess: ChildProcess | null = null;
+
+// Ring buffer para guardar as últimas 500 linhas do terminal
+const MAX_LINES = 500;
+const terminalLines: string[] = [];
+// SSE clients ativos
+const sseClients: Set<Response> = new Set();
+
+function pushLine(line: string) {
+  terminalLines.push(line);
+  if (terminalLines.length > MAX_LINES) terminalLines.shift();
+  const data = JSON.stringify({ line });
+  for (const res of sseClients) {
+    try {
+      res.write(`data: ${data}\n\n`);
+    } catch {
+      sseClients.delete(res);
+    }
+  }
+}
+
+function attachProcessIO(child: ChildProcess) {
+  child.stdout?.setEncoding("utf8");
+  child.stderr?.setEncoding("utf8");
+
+  const splitLines = (chunk: string) =>
+    chunk.split(/\r?\n/).filter((l) => l.length > 0);
+
+  child.stdout?.on("data", (chunk: string) => {
+    splitLines(chunk).forEach(pushLine);
+  });
+  child.stderr?.on("data", (chunk: string) => {
+    splitLines(chunk).forEach((l) => pushLine("[STDERR] " + l));
+  });
+  child.on("close", (code) => {
+    pushLine(`[SISTEMA] Processo encerrado (código ${code ?? "?"}).`);
+    botProcess = null;
+  });
+  child.on("error", (err) => {
+    pushLine(`[SISTEMA] Erro no processo: ${err.message}`);
+  });
+}
 
 function readSettings() {
   try {
@@ -53,13 +93,13 @@ function startBot(): { ok: boolean; message: string } {
     return { ok: false, message: "Bot já está em execução." };
   }
   try {
+    pushLine("[SISTEMA] Iniciando bot...");
     const child = spawn("node", ["index.js"], {
       cwd: BOT_DIR,
-      detached: true,
-      stdio: "ignore",
+      stdio: ["pipe", "pipe", "pipe"],
     });
-    child.unref();
     botProcess = child;
+    attachProcessIO(child);
     return { ok: true, message: "Bot iniciado com sucesso!" };
   } catch (e) {
     return { ok: false, message: "Erro ao iniciar bot: " + String(e) };
@@ -68,33 +108,19 @@ function startBot(): { ok: boolean; message: string } {
 
 function stopBot(): { ok: boolean; message: string } {
   try {
+    if (botProcess) {
+      botProcess.kill("SIGTERM");
+      botProcess = null;
+    }
     execSync("pkill -f 'node index.js' || true");
-    botProcess = null;
+    pushLine("[SISTEMA] Bot parado.");
     return { ok: true, message: "Bot parado com sucesso!" };
   } catch (e) {
     return { ok: false, message: "Erro ao parar bot: " + String(e) };
   }
 }
 
-function getRecentLogs(lines = 80): string[] {
-  try {
-    if (!fs.existsSync(LOG_DIR)) return [];
-    const files = fs
-      .readdirSync(LOG_DIR)
-      .filter((f) => f.startsWith("Bot_do_Biel"))
-      .sort()
-      .reverse();
-    if (!files.length) return [];
-    const content = fs.readFileSync(path.join(LOG_DIR, files[0]), "utf8");
-    return content
-      .split("\n")
-      .filter(Boolean)
-      .slice(-lines)
-      .reverse();
-  } catch {
-    return [];
-  }
-}
+// ── Rotas ──
 
 router.get("/status", (_req, res) => {
   const settings = readSettings();
@@ -111,8 +137,47 @@ router.get("/status", (_req, res) => {
   });
 });
 
+// SSE: stream de logs em tempo real
+router.get("/stream", (req: Request, res: Response) => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders();
+
+  // Envia histórico atual
+  const history = [...terminalLines];
+  for (const line of history) {
+    res.write(`data: ${JSON.stringify({ line })}\n\n`);
+  }
+
+  sseClients.add(res);
+
+  req.on("close", () => {
+    sseClients.delete(res);
+  });
+});
+
+// POST: envia texto para o stdin do bot (para digitar opções no terminal)
+router.post("/input", (req: Request, res: Response) => {
+  const { text } = req.body as { text?: string };
+  if (!botProcess || botProcess.killed || !botProcess.stdin) {
+    return res.status(400).json({ ok: false, message: "Bot não está em execução ou stdin indisponível." });
+  }
+  if (typeof text !== "string") {
+    return res.status(400).json({ ok: false, message: "Campo 'text' obrigatório." });
+  }
+  try {
+    botProcess.stdin.write(text + "\n");
+    pushLine(`[VOCÊ] ${text}`);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ ok: false, message: String(e) });
+  }
+});
+
+// Histórico de logs (compatibilidade com código anterior)
 router.get("/logs", (_req, res) => {
-  res.json({ logs: getRecentLogs(100) });
+  res.json({ logs: [...terminalLines].reverse() });
 });
 
 router.get("/settings", (_req, res) => {
